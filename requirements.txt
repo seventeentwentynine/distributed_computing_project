@@ -1,0 +1,10 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.30.0
+pydantic>=2.7.0
+# PyTorch 2.2+ is strictly required for Python 3.12 support
+torch
+transformers>=4.41.0
+numpy>=1.26.4
+protobuf
+sentencepiece
+tiktoken
