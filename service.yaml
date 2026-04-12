@@ -1,0 +1,51 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: roberta-news-classifier
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    metadata:
+      annotations:
+        # Prevent CPU from sleeping while GPU is processing
+        run.googleapis.com/cpu-throttling: "false"
+        run.googleapis.com/container-dependencies: '{"frontend":["triton-backend"]}'
+    spec:
+      # Allow up to 80 concurrent requests to take advantage of Triton's dynamic batching
+      containerConcurrency: 80
+      timeoutSeconds: 300
+      nodeSelector:
+        # Request the NVIDIA L4 GPU attachment
+        run.googleapis.com/accelerator: nvidia-l4
+      containers:
+
+      # --- CONTAINER 1: THE FRONTEND (FastAPI) ---
+      - image: us-central1-docker.pkg.dev/cybersectest-{ACCOUNT}/ml-repo/fastapi-frontend:v1
+        name: frontend
+        ports:
+        - containerPort: 8080 # Cloud Run routes public internet traffic to this port
+        env:
+        - name: TRITON_URL
+          value: "localhost:8001" # Point to the sidecar
+        resources:
+          limits:
+            cpu: "2"
+            memory: "2Gi"
+
+      # --- CONTAINER 2: THE SIDECAR (Triton Backend) ---
+      - image: us-central1-docker.pkg.dev/cybersectest-{ACCOUNT}/ml-repo/triton-sidecar:v1
+        name: triton-backend
+        resources:
+          limits:
+            cpu: "4" # Give Triton plenty of CPU for JSON/gRPC parsing
+            memory: "16Gi" # VRAM requirements dictate high system memory
+            nvidia.com/gpu: "1" # Allocate the L4 GPU to this specific container
+        startupProbe:
+          # Cloud Run will hold traffic until Triton says the model is loaded
+          httpGet:
+            port: 8000
+            path: /v2/health/ready
+          initialDelaySeconds: 5
+          periodSeconds: 2
+          failureThreshold: 30

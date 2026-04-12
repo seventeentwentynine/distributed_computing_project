@@ -69,8 +69,7 @@ def predict(request: PredictRequest):
         "confidence": float(probabilities[predicted_class_id]),
         "probabilities": {
             id_to_labels[i]: float(prob) for i, prob in enumerate(probabilities)
-        },
-        "device": str(device)
+        }
     }
 
 

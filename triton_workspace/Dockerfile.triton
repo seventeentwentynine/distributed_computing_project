@@ -1,0 +1,8 @@
+# Dockerfile.triton
+FROM nvcr.io/nvidia/tritonserver:26.03-py3
+
+# Copy the model repository directly into the container image
+COPY model_repository /models
+
+# Start the server using the baked-in models
+CMD ["tritonserver", "--model-repository=/models"]
